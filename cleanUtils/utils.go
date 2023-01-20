@@ -19,12 +19,12 @@ func CleanLibrary(libPath string, tracks []types.TrackTransform) (err error) {
 
 	for {
 		var deletedFiles deletedCounter
-		if err = cleanFiles(libPath, whitelist, deletedFiles); err != nil {
+		if err = cleanFiles(libPath, whitelist, &deletedFiles); err != nil {
 			return
 		}
 
 		var deletedDirs deletedCounter
-		if err = cleanFolders(libPath, deletedDirs); err != nil {
+		if err = cleanFolders(libPath, &deletedDirs); err != nil {
 			return
 		}
 
@@ -36,7 +36,7 @@ func CleanLibrary(libPath string, tracks []types.TrackTransform) (err error) {
 	return
 }
 
-func cleanFiles(root string, whitelist map[string]bool, counter deletedCounter) (err error) {
+func cleanFiles(root string, whitelist map[string]bool, counter *deletedCounter) (err error) {
 	files, err := os.ReadDir(root)
 	if err != nil {
 		return
@@ -62,7 +62,7 @@ func cleanFiles(root string, whitelist map[string]bool, counter deletedCounter) 
 	return
 }
 
-func cleanFolders(libPath string, counter deletedCounter) (err error) {
+func cleanFolders(libPath string, counter *deletedCounter) (err error) {
 	files, err := os.ReadDir(libPath)
 	if err != nil {
 		return

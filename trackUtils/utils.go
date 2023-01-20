@@ -12,10 +12,11 @@ import (
 func HandleTrack(trackPath string) (albumPath string, trackName string, err error) {
 	tag, err := openWithRetry(trackPath)
 	if err != nil {
-		fmt.Println("Error opening file: ", err)
 		return
 	}
 	defer tag.Close()
+
+	extension := filepath.Ext(trackPath)
 
 	trackNumber, _, err := parseSet(tag.GetTextFrame(tag.CommonID("Track number/Position in set")).Text)
 	if err != nil {
@@ -27,8 +28,16 @@ func HandleTrack(trackPath string) (albumPath string, trackName string, err erro
 		return
 	}
 
-	extension := filepath.Ext(trackPath)
-	albumPath, trackName = buildPath(tag.Artist(), tag.Album(), tag.Title(), tag.Year(), trackNumber, discNumber, discCount, extension)
+	albumPath, trackName = buildPath(
+		sanitizeArtist(tag.Artist()),
+		sanitizeName(tag.Album()),
+		sanitizeName(tag.Title()),
+		tag.Year(),
+		trackNumber,
+		discNumber,
+		discCount,
+		extension,
+	)
 
 	return
 }
@@ -82,5 +91,21 @@ func parseSet(set string) (number int, count int, err error) {
 }
 
 func sanitizeName(name string) string {
-	return strings.ReplaceAll(name, "/", "-")
+	sanitized := strings.Replace(name, "/", "-", -1)
+	sanitized = strings.Replace(sanitized, ":", " -", -1)
+	sanitized = strings.Replace(sanitized, "\"", "-", -1)
+	return strings.Trim(sanitized, " ")
+}
+
+func sanitizeArtist(artist string) string {
+	sanitizedArtst := artist
+
+	for _, featTerm := range []string{"feat.", "ft.", "feat", " ft ", "featuring"} {
+		if strings.Contains(artist, featTerm) {
+			sanitizedArtst = strings.Split(artist, featTerm)[0]
+			break
+		}
+	}
+
+	return sanitizeName(sanitizedArtst)
 }

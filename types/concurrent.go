@@ -27,3 +27,10 @@ func (c *ConcurrentCollection[T]) Append(value T) {
 
 	c.collection = append(c.collection, value)
 }
+
+func (c *ConcurrentCollection[T]) AppendAll(value []T) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	c.collection = append(c.collection, value...)
+}
