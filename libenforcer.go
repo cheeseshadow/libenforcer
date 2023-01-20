@@ -26,14 +26,14 @@ func main() {
 		}
 	}
 
-	enforceChange(*libpath, tracks)
-	err := cleanUtils.CleanLibrary(*libpath, tracks)
+	enforceChange(*libpath, tracks.Get())
+	err := cleanUtils.CleanLibrary(*libpath, tracks.Get())
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
-func buildTargetChange(libPath string) (tracks []types.TrackTransform, errs []error) {
+func buildTargetChange(libPath string) (tracks types.ConcurrentTrackCollection, errs []error) {
 	fmt.Println("Building target change...")
 	traverse(libPath, &tracks, &errs)
 	return
@@ -60,7 +60,7 @@ func enforceChange(libPath string, tracks []types.TrackTransform) {
 	}
 }
 
-func traverse(path string, tracks *[]types.TrackTransform, errs *[]error) {
+func traverse(path string, tracks *types.ConcurrentTrackCollection, errs *[]error) {
 	files, err := os.ReadDir(path)
 	if err != nil {
 		fmt.Println("Failed to find the libpath:", err)
@@ -69,13 +69,13 @@ func traverse(path string, tracks *[]types.TrackTransform, errs *[]error) {
 
 	for _, file := range files {
 		if file.IsDir() {
-			traverse(path+"/"+file.Name(), tracks, errs)
+			go traverse(path+"/"+file.Name(), tracks, errs)
 		} else {
 			albumPath, trackName, err := trackUtils.HandleTrack(path + "/" + file.Name())
 			if err != nil {
 				*errs = append(*errs, err)
 			} else {
-				*tracks = append(*tracks, types.TrackTransform{
+				tracks.Append(types.TrackTransform{
 					OriginalPath: path + "/" + file.Name(),
 					AlbumPath:    albumPath,
 					TrackName:    trackName,
