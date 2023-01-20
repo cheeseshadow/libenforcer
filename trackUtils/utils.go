@@ -44,9 +44,17 @@ func buildPath(artist string, album string, title string, year string, trackNumb
 func parseSet(set string) (number int, count int, err error) {
 	setData := strings.Split(set, "/")
 
+	if len(setData) == 0 {
+		return 0, 0, nil
+	}
+
 	number, err = strconv.Atoi(setData[0])
 	if err != nil {
 		return
+	}
+
+	if len(setData) == 1 {
+		return number, 1, nil
 	}
 
 	count, err = strconv.Atoi(setData[1])
