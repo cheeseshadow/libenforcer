@@ -19,11 +19,18 @@ func main() {
 	}
 
 	tracks, errs := buildTargetChange(*libpath)
-	enforceChange(*libpath, tracks)
-	cleanUtils.CleanLibrary(*libpath, tracks)
+	if len(errs) > 0 {
+		fmt.Println("Errors:")
+		for _, err := range errs {
+			fmt.Println(err)
+		}
+	}
 
-	fmt.Println(tracks)
-	fmt.Println(errs)
+	enforceChange(*libpath, tracks)
+	err := cleanUtils.CleanLibrary(*libpath, tracks)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 func buildTargetChange(libPath string) (tracks []types.TrackTransform, errs []error) {
@@ -32,7 +39,10 @@ func buildTargetChange(libPath string) (tracks []types.TrackTransform, errs []er
 }
 
 func enforceChange(libPath string, tracks []types.TrackTransform) {
-	for _, track := range tracks {
+	trackCount := len(tracks)
+	for trackNum, track := range tracks {
+		fmt.Printf("Moving track %d/%d: %s\n", trackNum+1, trackCount, track.TrackName)
+
 		fullAlbumPath := libPath + "/" + track.AlbumPath
 		fullTrackPath := fullAlbumPath + "/" + track.TrackName
 		if track.OriginalPath == fullTrackPath {
