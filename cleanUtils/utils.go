@@ -2,6 +2,7 @@ package cleanUtils
 
 import (
 	"cheeseshadow/libenforcer/types"
+	"fmt"
 	"os"
 )
 
@@ -36,6 +37,7 @@ func cleanFiles(root string, whitelist map[string]bool) (err error) {
 		} else {
 			filePath := root + "/" + file.Name()
 			if !whitelist[filePath] {
+				fmt.Println("Removing file:", filePath)
 				if err = os.Remove(root + "/" + file.Name()); err != nil {
 					return
 				}
@@ -53,6 +55,7 @@ func cleanFolders(libPath string) (err error) {
 	}
 
 	if len(files) == 0 {
+		fmt.Println("Removing empty folder:", libPath)
 		err = os.Remove(libPath)
 
 		return

@@ -6,6 +6,7 @@ import (
 	"cheeseshadow/libenforcer/types"
 	"fmt"
 	"os"
+	"sync"
 )
 import "flag"
 
@@ -35,14 +36,19 @@ func main() {
 
 func buildTargetChange(libPath string) (tracks types.ConcurrentTrackCollection, errs []error) {
 	fmt.Println("Building target change...")
-	traverse(libPath, &tracks, &errs)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go traverse(libPath, &tracks, &errs, &wg)
+	wg.Wait()
+
 	return
 }
 
 func enforceChange(libPath string, tracks []types.TrackTransform) {
 	trackCount := len(tracks)
 	for trackNum, track := range tracks {
-		fmt.Printf("Moving track %d/%d: %s\n", trackNum+1, trackCount, track.TrackName)
+		fmt.Printf("Handling track %d/%d: %s\n", trackNum+1, trackCount, track.TrackName)
 
 		fullAlbumPath := libPath + "/" + track.AlbumPath
 		fullTrackPath := fullAlbumPath + "/" + track.TrackName
@@ -60,7 +66,9 @@ func enforceChange(libPath string, tracks []types.TrackTransform) {
 	}
 }
 
-func traverse(path string, tracks *types.ConcurrentTrackCollection, errs *[]error) {
+func traverse(path string, tracks *types.ConcurrentTrackCollection, errs *[]error, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	files, err := os.ReadDir(path)
 	if err != nil {
 		fmt.Println("Failed to find the libpath:", err)
@@ -69,7 +77,8 @@ func traverse(path string, tracks *types.ConcurrentTrackCollection, errs *[]erro
 
 	for _, file := range files {
 		if file.IsDir() {
-			go traverse(path+"/"+file.Name(), tracks, errs)
+			wg.Add(1)
+			go traverse(path+"/"+file.Name(), tracks, errs, wg)
 		} else {
 			albumPath, trackName, err := trackUtils.HandleTrack(path + "/" + file.Name())
 			if err != nil {
