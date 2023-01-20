@@ -13,6 +13,7 @@ func HandleTrack(trackPath string) (albumPath string, trackName string, err erro
 	if err != nil {
 		return
 	}
+	defer tag.Close()
 
 	trackNumber, _, err := parseSet(tag.GetTextFrame(tag.CommonID("Track number/Position in set")).Text)
 	if err != nil {
@@ -38,7 +39,7 @@ func buildPath(artist string, album string, title string, year string, trackNumb
 
 	albumPath := fmt.Sprintf("%s/%s - %s", artist, year, album)
 
-	return albumPath, trackName
+	return albumPath, sanitizeName(trackName)
 }
 
 func parseSet(set string) (number int, count int, err error) {
@@ -63,4 +64,8 @@ func parseSet(set string) (number int, count int, err error) {
 	}
 
 	return
+}
+
+func sanitizeName(name string) string {
+	return strings.ReplaceAll(name, "/", "-")
 }
