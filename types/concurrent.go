@@ -2,28 +2,28 @@ package types
 
 import "sync"
 
-type ConcurrentTrackCollection struct {
-	mutex  sync.Mutex
-	tracks []TrackTransform
+type ConcurrentCollection[T any] struct {
+	mutex      sync.Mutex
+	collection []T
 }
 
-func (c *ConcurrentTrackCollection) Add(track TrackTransform) {
+func (c *ConcurrentCollection[T]) Add(value T) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	c.tracks = append(c.tracks, track)
+	c.collection = append(c.collection, value)
 }
 
-func (c *ConcurrentTrackCollection) Get() []TrackTransform {
+func (c *ConcurrentCollection[T]) Get() []T {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	return c.tracks
+	return c.collection
 }
 
-func (c *ConcurrentTrackCollection) Append(track TrackTransform) {
+func (c *ConcurrentCollection[T]) Append(value T) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	c.tracks = append(c.tracks, track)
+	c.collection = append(c.collection, value)
 }

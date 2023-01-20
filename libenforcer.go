@@ -4,6 +4,7 @@ import (
 	"cheeseshadow/libenforcer/cleanUtils"
 	"cheeseshadow/libenforcer/trackUtils"
 	"cheeseshadow/libenforcer/types"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,9 +22,9 @@ func main() {
 	}
 
 	tracks, errs := buildTargetChange(*libpath)
-	if len(errs) > 0 {
+	if len(errs.Get()) > 0 {
 		fmt.Println("Errors:")
-		for _, err := range errs {
+		for _, err := range errs.Get() {
 			fmt.Println(err)
 		}
 	}
@@ -35,12 +36,14 @@ func main() {
 	}
 }
 
-func buildTargetChange(libPath string) (tracks types.ConcurrentTrackCollection, errs []error) {
+func buildTargetChange(libPath string) (tracks types.ConcurrentCollection[types.TrackTransform], errs types.ConcurrentCollection[error]) {
 	fmt.Println("Building target change...")
+	maxGoroutinesAtOnce := 5
 
 	var wg sync.WaitGroup
+	semaphore := make(chan bool, maxGoroutinesAtOnce)
 	wg.Add(1)
-	go traverse(libPath, &tracks, &errs, &wg)
+	go traverse(libPath, &tracks, &errs, &wg, semaphore)
 	wg.Wait()
 
 	return
@@ -67,8 +70,12 @@ func enforceChange(libPath string, tracks []types.TrackTransform) {
 	}
 }
 
-func traverse(path string, tracks *types.ConcurrentTrackCollection, errs *[]error, wg *sync.WaitGroup) {
-	defer wg.Done()
+func traverse(path string, tracks *types.ConcurrentCollection[types.TrackTransform], errs *types.ConcurrentCollection[error], wg *sync.WaitGroup, semaphore chan bool) {
+	semaphore <- true
+	defer func() {
+		wg.Done()
+		<-semaphore
+	}()
 
 	files, err := os.ReadDir(path)
 	if err != nil {
@@ -80,11 +87,11 @@ func traverse(path string, tracks *types.ConcurrentTrackCollection, errs *[]erro
 		filePath := filepath.Join(path, file.Name())
 		if file.IsDir() {
 			wg.Add(1)
-			go traverse(filepath.Join(filePath), tracks, errs, wg)
+			go traverse(filepath.Join(filePath), tracks, errs, wg, semaphore)
 		} else {
 			albumPath, trackName, err := trackUtils.HandleTrack(filePath)
 			if err != nil {
-				*errs = append(*errs, err)
+				errs.Add(errors.New(fmt.Sprintf("Failed to handle track %s: %s", filePath, err)))
 			} else {
 				tracks.Append(types.TrackTransform{
 					OriginalPath: filePath,

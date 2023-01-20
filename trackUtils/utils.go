@@ -6,11 +6,13 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func HandleTrack(trackPath string) (albumPath string, trackName string, err error) {
-	tag, err := id3v2.Open(trackPath, id3v2.Options{Parse: true})
+	tag, err := openWithRetry(trackPath)
 	if err != nil {
+		fmt.Println("Error opening file: ", err)
 		return
 	}
 	defer tag.Close()
@@ -27,6 +29,19 @@ func HandleTrack(trackPath string) (albumPath string, trackName string, err erro
 
 	extension := filepath.Ext(trackPath)
 	albumPath, trackName = buildPath(tag.Artist(), tag.Album(), tag.Title(), tag.Year(), trackNumber, discNumber, discCount, extension)
+
+	return
+}
+
+func openWithRetry(path string) (tag *id3v2.Tag, err error) {
+	maxRetryCount := 5
+	for i := 0; i < maxRetryCount; i++ {
+		tag, err = id3v2.Open(path, id3v2.Options{Parse: true})
+		if err == nil {
+			return tag, nil
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 
 	return
 }
