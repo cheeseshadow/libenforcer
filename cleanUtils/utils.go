@@ -4,12 +4,13 @@ import (
 	"cheeseshadow/libenforcer/types"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 func CleanLibrary(libPath string, tracks []types.TrackTransform) (err error) {
 	whitelist := make(map[string]bool)
 	for _, track := range tracks {
-		whitelist[libPath+"/"+track.AlbumPath+"/"+track.TrackName] = true
+		whitelist[filepath.Join(libPath, track.TrackPath())] = true
 	}
 
 	if err = cleanFiles(libPath, whitelist); err != nil {
@@ -30,15 +31,15 @@ func cleanFiles(root string, whitelist map[string]bool) (err error) {
 	}
 
 	for _, file := range files {
+		filePath := filepath.Join(root, file.Name())
 		if file.IsDir() {
-			if err = cleanFiles(root+"/"+file.Name(), whitelist); err != nil {
+			if err = cleanFiles(filePath, whitelist); err != nil {
 				return
 			}
 		} else {
-			filePath := root + "/" + file.Name()
 			if !whitelist[filePath] {
 				fmt.Println("Removing file:", filePath)
-				if err = os.Remove(root + "/" + file.Name()); err != nil {
+				if err = os.Remove(filePath); err != nil {
 					return
 				}
 			}
@@ -62,8 +63,9 @@ func cleanFolders(libPath string) (err error) {
 	}
 
 	for _, file := range files {
+		filePath := filepath.Join(libPath, file.Name())
 		if file.IsDir() {
-			if err = cleanFolders(libPath + "/" + file.Name()); err != nil {
+			if err = cleanFolders(filePath); err != nil {
 				return
 			}
 		}

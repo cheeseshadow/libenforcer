@@ -6,6 +6,7 @@ import (
 	"cheeseshadow/libenforcer/types"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 )
 import "flag"
@@ -50,8 +51,8 @@ func enforceChange(libPath string, tracks []types.TrackTransform) {
 	for trackNum, track := range tracks {
 		fmt.Printf("Handling track %d/%d: %s\n", trackNum+1, trackCount, track.TrackName)
 
-		fullAlbumPath := libPath + "/" + track.AlbumPath
-		fullTrackPath := fullAlbumPath + "/" + track.TrackName
+		fullAlbumPath := filepath.Join(libPath, track.AlbumPath)
+		fullTrackPath := filepath.Join(libPath, track.TrackPath())
 		if track.OriginalPath == fullTrackPath {
 			continue
 		}
@@ -76,16 +77,17 @@ func traverse(path string, tracks *types.ConcurrentTrackCollection, errs *[]erro
 	}
 
 	for _, file := range files {
+		filePath := filepath.Join(path, file.Name())
 		if file.IsDir() {
 			wg.Add(1)
-			go traverse(path+"/"+file.Name(), tracks, errs, wg)
+			go traverse(filepath.Join(filePath), tracks, errs, wg)
 		} else {
-			albumPath, trackName, err := trackUtils.HandleTrack(path + "/" + file.Name())
+			albumPath, trackName, err := trackUtils.HandleTrack(filePath)
 			if err != nil {
 				*errs = append(*errs, err)
 			} else {
 				tracks.Append(types.TrackTransform{
-					OriginalPath: path + "/" + file.Name(),
+					OriginalPath: filePath,
 					AlbumPath:    albumPath,
 					TrackName:    trackName,
 				})
