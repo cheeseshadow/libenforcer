@@ -34,6 +34,7 @@ func main() {
 }
 
 func buildTargetChange(libPath string) (tracks []types.TrackTransform, errs []error) {
+	fmt.Println("Building target change...")
 	traverse(libPath, &tracks, &errs)
 	return
 }
