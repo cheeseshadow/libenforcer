@@ -1,4 +1,4 @@
-module cheeseshadow/libenforcer
+module github.com/cheeseshadow/libenforcer
 
 go 1.19
 

@@ -1,12 +1,12 @@
 package main
 
 import (
-	"cheeseshadow/libenforcer/cleanUtils"
-	"cheeseshadow/libenforcer/trackUtils"
-	"cheeseshadow/libenforcer/types"
-	"cheeseshadow/libenforcer/utils"
 	"errors"
 	"fmt"
+	"github.com/cheeseshadow/libenforcer/cleanUtils"
+	"github.com/cheeseshadow/libenforcer/trackUtils"
+	"github.com/cheeseshadow/libenforcer/types"
+	"github.com/cheeseshadow/libenforcer/utils"
 	"github.com/schollz/progressbar"
 	"os"
 	"path/filepath"

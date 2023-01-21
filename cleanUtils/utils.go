@@ -1,9 +1,9 @@
 package cleanUtils
 
 import (
-	"cheeseshadow/libenforcer/types"
-	"cheeseshadow/libenforcer/utils"
 	"fmt"
+	"github.com/cheeseshadow/libenforcer/types"
+	"github.com/cheeseshadow/libenforcer/utils"
 	"os"
 	"path/filepath"
 )
