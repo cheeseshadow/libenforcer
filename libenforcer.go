@@ -23,7 +23,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("libenforcer v0.1.0")
+		fmt.Println("libenforcer v0.1.1")
 		os.Exit(0)
 	}
 
