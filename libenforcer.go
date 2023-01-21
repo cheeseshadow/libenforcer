@@ -19,7 +19,13 @@ import "flag"
 func main() {
 	libpath := flag.String("f", "", "path to library")
 	threads := flag.Int("t", 1, "number of threads to use")
+	version := flag.Bool("v", false, "print version and exit")
 	flag.Parse()
+
+	if *version {
+		fmt.Println("libenforcer v0.1.0")
+		os.Exit(0)
+	}
 
 	if *libpath == "" {
 		fmt.Println("Please specify a library path using -f")
