@@ -4,6 +4,7 @@ import (
 	"cheeseshadow/libenforcer/cleanUtils"
 	"cheeseshadow/libenforcer/trackUtils"
 	"cheeseshadow/libenforcer/types"
+	"cheeseshadow/libenforcer/utils"
 	"errors"
 	"fmt"
 	"github.com/schollz/progressbar"
@@ -11,11 +12,13 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 import "flag"
 
 func main() {
 	libpath := flag.String("f", "", "path to library")
+	threads := flag.Int("t", 1, "number of threads to use")
 	flag.Parse()
 
 	if *libpath == "" {
@@ -23,7 +26,7 @@ func main() {
 		return
 	}
 
-	tracks, errs := buildTargetChange(*libpath)
+	tracks, errs := buildTargetChange(*libpath, *threads)
 	if len(errs.Get()) > 0 {
 		fmt.Println("Errors:")
 		for _, err := range errs.Get() {
@@ -32,26 +35,50 @@ func main() {
 	}
 
 	enforceChange(*libpath, tracks.Get())
+
+	fmt.Println("\nI'll make a slight pause here...")
+	time.Sleep(1 * time.Second)
+
 	err := cleanUtils.CleanLibrary(*libpath, tracks.Get())
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
-func buildTargetChange(libPath string) (tracks types.ConcurrentCollection[types.TrackTransform], errs types.ConcurrentCollection[error]) {
+func buildTargetChange(libPath string, maxGoroutinesAtOnce int) (tracks types.ConcurrentCollection[types.TrackTransform], errs types.ConcurrentCollection[error]) {
 	fmt.Println("Building target change...")
 
-	asyncTracks, retryTracks, errs := traverseConcurrently(libPath, 10)
-
-	var syncTracks []types.TrackTransform
-	var syncErrs []error
-	if len(retryTracks.Get()) > 0 {
-		fmt.Printf("Retrying %v failed tracks...\n", len(retryTracks.Get()))
-		syncTracks, syncErrs = handleTracksSynchronously(retryTracks.Get())
+	files, err := os.ReadDir(libPath)
+	if err != nil {
+		fmt.Println("Failed to find the libpath:", err)
+		return
 	}
 
-	tracks.AppendAll(append(asyncTracks.Get(), syncTracks...))
-	errs.AppendAll(syncErrs)
+	for _, file := range files {
+		if !file.IsDir() {
+			continue
+		}
+		fmt.Println("Processing", file.Name())
+
+		filePath := filepath.Join(libPath, file.Name())
+		dirTracks, retryTracks, asyncErrs := traverseConcurrently(filePath, maxGoroutinesAtOnce)
+		dirErrs := asyncErrs.Get()
+
+		if len(retryTracks.Get()) > 0 {
+			fmt.Printf("Retrying %v failed tracks...\n", len(retryTracks.Get()))
+			syncTracks, syncErrs := handleTracksSynchronously(retryTracks.Get())
+
+			dirTracks.AppendAll(syncTracks)
+			dirErrs = append(dirErrs, syncErrs...)
+		}
+		fmt.Println("Errors:", len(dirErrs))
+
+		enforceChange(libPath, tracks.Get())
+		fmt.Println("Change enforced...")
+
+		tracks.AppendAll(dirTracks.Get())
+		errs.AppendAll(dirErrs)
+	}
 
 	return
 }
@@ -136,6 +163,14 @@ func traverse(
 			wg.Add(1)
 			go traverse(filepath.Join(filePath), tracks, errs, retryTracks, wg, semaphore)
 		} else {
+			fileType, err := utils.GetFileContentType(filePath)
+			if err != nil {
+				errs.Add(errors.New(fmt.Sprintf("Failed to handle track %s: %s", filePath, err)))
+			}
+			if fileType != "audio/mpeg" {
+				continue
+			}
+
 			albumPath, trackName, err := trackUtils.HandleTrack(filePath)
 			if err != nil {
 				if strings.Contains(err.Error(), "device not configured") ||

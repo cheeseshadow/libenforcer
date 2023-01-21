@@ -2,6 +2,7 @@ package cleanUtils
 
 import (
 	"cheeseshadow/libenforcer/types"
+	"cheeseshadow/libenforcer/utils"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,8 @@ type deletedCounter struct {
 }
 
 func CleanLibrary(libPath string, tracks []types.TrackTransform) (err error) {
+	fmt.Println("Cleaning library...")
+
 	whitelist := make(map[string]bool)
 	for _, track := range tracks {
 		whitelist[filepath.Join(libPath, track.TrackPath())] = true
@@ -19,8 +22,12 @@ func CleanLibrary(libPath string, tracks []types.TrackTransform) (err error) {
 
 	for {
 		var deletedFiles deletedCounter
-		if err = cleanFiles(libPath, whitelist, &deletedFiles); err != nil {
-			return
+		fileErrs := cleanFiles(libPath, whitelist, &deletedFiles)
+		if len(fileErrs) > 0 {
+			fmt.Println("Some files could not be deleted:")
+			for _, fileErr := range fileErrs {
+				fmt.Println(fileErr)
+			}
 		}
 
 		var deletedDirs deletedCounter
@@ -36,26 +43,32 @@ func CleanLibrary(libPath string, tracks []types.TrackTransform) (err error) {
 	return
 }
 
-func cleanFiles(root string, whitelist map[string]bool, counter *deletedCounter) (err error) {
+func cleanFiles(root string, whitelist map[string]bool, counter *deletedCounter) (errs []error) {
 	files, err := os.ReadDir(root)
 	if err != nil {
+		errs = append(errs, err)
 		return
 	}
 
 	for _, file := range files {
 		filePath := filepath.Join(root, file.Name())
-		if file.IsDir() {
-			if err = cleanFiles(filePath, whitelist, counter); err != nil {
-				return
-			}
-		} else {
-			if !whitelist[filePath] {
-				fmt.Println("Removing file:", filePath)
-				counter.Value++
-				if err = os.Remove(filePath); err != nil {
-					return
+		if !file.IsDir() {
+			if _, ok := whitelist[filePath]; !ok {
+				if utils.CheckIfFileExists(filePath) {
+					fmt.Println("Removing file:", filePath)
+					counter.Value++
+					if err := os.Remove(filePath); err != nil {
+						errs = append(errs, err)
+					}
 				}
 			}
+		}
+	}
+
+	for _, file := range files {
+		filePath := filepath.Join(root, file.Name())
+		if file.IsDir() {
+			errs = append(errs, cleanFiles(filePath, whitelist, counter)...)
 		}
 	}
 
